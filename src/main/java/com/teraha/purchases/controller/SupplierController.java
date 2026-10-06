@@ -28,7 +28,7 @@ public class SupplierController {
 	private final SupplierService supplierService;
 
 	@GetMapping
-	public Page<SupplierDTO> getSuppliers(@RequestParam(name="page", defaultValue="0") int page, @RequestParam(name="search", required="false") String search){
+	public Page<SupplierDTO> getSuppliers(@RequestParam(name="page", defaultValue="0") int page, @RequestParam(name="search", required=false) String search){
 		//TODO: have the search param in case I have time later. Wont hurt noone.
 		log.info("Received a GET request at /suppliers");
 		return supplierService.listSuppliers(page);

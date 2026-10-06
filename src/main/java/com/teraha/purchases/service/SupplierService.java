@@ -10,6 +10,7 @@ import com.teraha.commons.entities.Supplier;
 import com.teraha.commons.dtos.SupplierDTO;
 
 import com.teraha.purchases.repository.SupplierRepository;
+import com.teraha.purchases.mapper.SupplierMapper;
 import com.teraha.purchases.exception.SupplierConflictException;
 import com.teraha.purchases.exception.SupplierNotFoundException;
 import com.teraha.purchases.exception.SupplierBadRequestException;

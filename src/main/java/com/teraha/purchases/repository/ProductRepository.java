@@ -9,7 +9,6 @@ import org.springframework.data.domain.Page;
 
 import com.teraha.commons.entities.Product;
 
-@Repository
 public interface ProductRepository extends BaseRepository<Product> {
 
 	Optional<Product> findByIdAndActiveTrue(Long id);

@@ -1,8 +1,18 @@
 package com.teraha.purchases.repository;
 
-import org.springframework.stereotypes.Repository;
+import java.util.Optional;
+
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Page;
 
 import com.teraha.commons.entities.Supplier;
 
-@Repository
-public interface SupplierRepository extends PersonRepository<Supplier> {}
+public interface SupplierRepository extends PersonRepository<Supplier> {
+
+	Page<Supplier> findAllByActiveTrue(Pageable page);
+
+	Optional<Supplier> findByIdAndActiveTrue(Long id);
+
+	boolean existsByDocument(String document);
+
+}

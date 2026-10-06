@@ -19,6 +19,7 @@ public interface SupplierMapper{
 	Supplier toEntity(SupplierDTO supplierDto);
 
 	@BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+	@Mapping(target="products", ignore=true)
 	void updateEntity(
 			SupplierDTO supplierDto,
 			@MappingTarget Supplier supplier);

@@ -45,13 +45,19 @@ public class SupplierService {
 	}
 
 	public Page<SupplierDTO> listSuppliers(int page){
+		//TODO: search?
+		
 		Pageable pageReq = PageRequest.of(page, pageConfigs.getPageSize());
+
+		log.info("Listing suppliers, page: {}", page);
 
 		return supplierRepository.findAllByActiveTrue(pageReq)
 			.map(supplierMapper::toDto);
 	}
 
 	public SupplierDTO findSupplierById(Long id){
+
+		log.info("Fetching supplier with id: {}", id);
 		return supplierRepository.findByIdAndActiveTrue(id)
 			.map(supplierMapper::toDto)
 			.orElseThrow(() -> new SupplierNotFoundException(id));

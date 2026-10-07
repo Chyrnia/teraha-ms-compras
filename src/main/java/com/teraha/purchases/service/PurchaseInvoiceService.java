@@ -74,6 +74,7 @@ public class PurchaseInvoiceService {
 		PurchaseInvoice saved = purchaseInvoiceRepository.save(invoice);
 
 		//call products and tell him that we got more stock!
+		log.warn("Updating product inventory with Products service!");
 		for(PurchaseInvoiceDetailDTO d : dto.getDetails()){
 			updateProductStock(d.getProductId(), d.getQuantity(), d.getUnitCost());
 		}
@@ -82,12 +83,18 @@ public class PurchaseInvoiceService {
 	}
 
 	public Page<PurchaseInvoiceDTO> listPurchases(int page){
+
+		log.info("Listing purchases, page {}", page);
+		//TODO: search
 		Pageable pageReq = PageRequest.of(page, pageConfigs.getPageSize());
 		return purchaseInvoiceRepository.findAll(pageReq)
 			.map(purchaseInvoiceMapper::toDto);
 	}
 
 	public PurchaseInvoiceDTO getPurchaseInvoice(Long id){
+		
+		log.info("Fetching invoice with id: {}", id);
+
 		return purchaseInvoiceRepository.findById(id)
 			.map(purchaseInvoiceMapper::toDto)
 			.orElseThrow(() -> new PurchaseInvoiceNotFoundException(id));

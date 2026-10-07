@@ -3,8 +3,10 @@ package com.teraha.purchases;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.persistence.autoconfigure.EntityScan;
-impotr org.springframework.web.client.RestTemplate;
-impotr org.springframework.context.annotation.Bean;
+import org.springframework.boot.restclient.RestTemplateBuilder;
+
+import org.springframework.web.client.RestTemplate;
+import org.springframework.context.annotation.Bean;
 
 
 @SpringBootApplication
@@ -16,8 +18,8 @@ public class PurchasesApplication {
 	}
 
 	@Bean
-	public RestTemplate restTemplate(){
-		return new RestTemplate();
+	public RestTemplate restTemplate(RestTemplateBuilder builder){
+		return builder.build();
 	}
 
 }

@@ -11,7 +11,7 @@ import com.teraha.commons.dtos.SupplierDTO;
 
 import com.teraha.purchases.repository.SupplierRepository;
 import com.teraha.purchases.mapper.SupplierMapper;
-import com.teraha.purchases.config.PagingConfigs;
+import com.teraha.purchases.configs.PagingConfigs;
 
 import com.teraha.purchases.exception.SupplierConflictException;
 import com.teraha.purchases.exception.SupplierNotFoundException;
@@ -71,7 +71,7 @@ public class SupplierService {
 	private void validateRequiredCreationFields(SupplierDTO dto){
 
 		if(
-				dto.getDocument() == null || dto.getDocument().isBlank ||
+				dto.getDocument() == null || dto.getDocument().isBlank() ||
 				dto.getName() == null || dto.getName().isBlank() ||
 				dto.getTimbrado() == null || dto.getTimbrado().isBlank()
 		  ){

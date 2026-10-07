@@ -35,13 +35,41 @@ public class GlobalExceptionHandler {
 	}
 
 	@ExceptionHandler(SupplierBadRequestException.class)
-	public ResponseEntity<ErrorResponse> handleBadRequest(SupplierBadRequestException exception){
+	public ResponseEntity<ErrorResponse> handleBadRequestSupplier(SupplierBadRequestException exception){
 		ErrorResponse error = new ErrorResponse()
 			.status(HttpStatus.BAD_REQUEST.value())
 			.message(exception.getMessage())
 			.timestamp(OffsetDateTime.now());
 		return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
 	}
+
+	@ExceptionHandler(ProductNotFoundException.class)
+	public ResponseEntity<ErrorResponse> handleProductNotFound(ProductNotFoundException exception){
+		ErrorResponse error = new ErrorResponse()
+			.status(HttpStatus.NOT_FOUND.value())
+			.message(exception.getMessage())
+			.timestamp(OffsetDateTime.now());
+		return new ResponseEntity<>(error, HttpStatus.NOT_FOUND); 
+	}
+
+	@ExceptionHandler(PurchaseInvoiceBadRequestException.class)
+	public ResponseEntity<ErrorResponse> handleBadRequestInvoice(PurchaseInvoiceBadRequestException exception){
+		ErrorResponse error = new ErrorResponse()
+			.status(HttpStatus.BAD_REQUEST.value())
+			.message(exception.getMessage())
+			.timestamp(OffsetDateTime.now());
+		return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+	}
+
+	@ExceptionHandler(PurchaseInvoiceNotFoundException.class)
+	public ResponseEntity<ErrorResponse> handleInvoiceNotFound(PurchaseInvoiceNotFoundException exception){
+		ErrorResponse error = new ErrorResponse()
+			.status(HttpStatus.NOT_FOUND.value())
+			.message(exception.getMessage())
+			.timestamp(OffsetDateTime.now());
+		return new ResponseEntity<>(error, HttpStatus.NOT_FOUND); 
+	}
+
 
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<ErrorResponse> handleGenericError(Exception exception){

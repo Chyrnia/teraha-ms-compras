@@ -25,6 +25,7 @@ import com.teraha.purchases.repository.SupplierRepository;
 import com.teraha.purchases.repository.PurchaseInvoiceRepository;
 
 import com.teraha.purchases.mapper.PurchaseInvoiceMapper;
+import com.teraha.purchases.configs.PagingConfigs;
 
 import com.teraha.purchases.exception.SupplierNotFoundException;
 import com.teraha.purchases.exception.ProductNotFoundException;
@@ -47,6 +48,7 @@ public class PurchaseInvoiceService {
 	private final PurchaseInvoiceRepository purchaseInvoiceRepository;
 
 	private final PurchaseInvoiceMapper purchaseInvoiceMapper;
+	private final PagingConfigs pageConfigs;
 
 	public PurchaseInvoiceDTO createPurchaseInvoice(PurchaseInvoiceDTO dto){
 
@@ -76,8 +78,7 @@ public class PurchaseInvoiceService {
 	}
 
 	public Page<PurchaseInvoiceDTO> listPurchases(int page){
-		//TODO: create paging configurations
-		Pageable pageReq = PageRequest.of(page, 10);
+		Pageable pageReq = PageRequest.of(page, pageConfigs.getPageSize());
 		return purchaseInvoiceRepository.findAll(pageReq)
 			.map(purchaseInvoiceMapper::toDto);
 	}

@@ -11,6 +11,8 @@ import com.teraha.commons.dtos.SupplierDTO;
 
 import com.teraha.purchases.repository.SupplierRepository;
 import com.teraha.purchases.mapper.SupplierMapper;
+import com.teraha.purchases.config.PagingConfigs;
+
 import com.teraha.purchases.exception.SupplierConflictException;
 import com.teraha.purchases.exception.SupplierNotFoundException;
 import com.teraha.purchases.exception.SupplierBadRequestException;
@@ -27,6 +29,7 @@ public class SupplierService {
 
 	private final SupplierRepository supplierRepository;
 	private final SupplierMapper supplierMapper;
+	private final PagingConfigs pageConfigs;
 
 	public SupplierDTO createSupplier(SupplierDTO dto){
 
@@ -42,8 +45,7 @@ public class SupplierService {
 	}
 
 	public Page<SupplierDTO> listSuppliers(int page){
-		//TODO: still have to create PageConfigs for this
-		Pageable pageReq = PageRequest.of(page, 10);
+		Pageable pageReq = PageRequest.of(page, pageConfigs.getPageSize());
 
 		return supplierRepository.findAllByActiveTrue(pageReq)
 			.map(supplierMapper::toDto);

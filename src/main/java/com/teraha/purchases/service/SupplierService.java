@@ -70,11 +70,14 @@ public class SupplierService {
 
 	private void validateRequiredCreationFields(SupplierDTO dto){
 
-		//TODO: check for blank strings too
-		if(dto.getDocument() == null || dto.getName() == null || dto.getTimbrado() == null){
+		if(
+				dto.getDocument() == null || dto.getDocument().isBlank ||
+				dto.getName() == null || dto.getName().isBlank() ||
+				dto.getTimbrado() == null || dto.getTimbrado().isBlank()
+		  ){
 			throw new SupplierBadRequestException("Los campos Nombre, Documento y Timbrado son obligatorios");
-		}
-		
+		  }
+
 	}
 
 }

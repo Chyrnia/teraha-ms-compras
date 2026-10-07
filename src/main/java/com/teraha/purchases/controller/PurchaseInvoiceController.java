@@ -38,6 +38,7 @@ public class PurchaseInvoiceController {
 	@GetMapping
 	public Page<PurchaseInvoiceDTO> listPurchaseInvoices(@RequestParam(name="page", defaultValue="0") int page, @RequestParam(name="search", required=false) String search){
 		
+		//TODO: search
 		log.info("Received a GET at /purchases");
 
 		return purchaseService.listPurchases(page);

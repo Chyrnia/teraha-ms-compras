@@ -1,11 +1,14 @@
 package com.teraha.purchases.service;
 
-import java.util.Optional;
 import java.util.List;
 import java.math.BigDecimal;
 
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Page;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
 
 import com.teraha.commons.entities.PurchaseInvoice;
 import com.teraha.commons.entities.PurchaseInvoiceDetail;
@@ -14,6 +17,8 @@ import com.teraha.commons.entities.Supplier;
 
 import com.teraha.commons.dtos.PurchaseInvoiceDTO;
 import com.teraha.commons.dtos.PurchaseInvoiceDetailDTO;
+import com.teraha.commons.dtos.InventoryUpdate;
+import com.teraha.commons.dtos.ProductDTO;
 
 import com.teraha.purchases.repository.ProductRepository;
 import com.teraha.purchases.repository.SupplierRepository;
@@ -34,6 +39,8 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class PurchaseInvoiceService {
 
+	private final RestTemplate rest;
+
 	private final SupplierRepository supplierRepository;
 	private final ProductRepository productRepository;
 	private final PurchaseInvoiceRepository purchaseInvoiceRepository;
@@ -44,7 +51,7 @@ public class PurchaseInvoiceService {
 
 		validatePurchaseInvoiceCreation(dto);
 
-		//retriev and validate supplier 
+		//retrieve and validate supplier 
 		Supplier supplier = supplierRepository
 			.findByIdAndActiveTrue(dto.getSupplierId())
 			.orElseThrow(() -> new SupplierNotFoundException(dto.getSupplierId()));
@@ -59,7 +66,25 @@ public class PurchaseInvoiceService {
 
 		PurchaseInvoice saved = purchaseInvoiceRepository.save(invoice);
 
+		//call products and tell him that we got more stock!
+		for(PurchaseInvoiceDetailDTO d : dto.getDetails()){
+			updateProductStock(d.getProductId(), d.getQuantity(), d.getUnitCost());
+		}
+
 		return purchaseInvoiceMapper.toDto(saved);
+	}
+
+	public Page<PurchaseInvoiceDTO> listPurchases(int page){
+		//TODO: create paging configurations
+		Pageable pageReq = PageRequest.of(page, 10);
+		return purchaseInvoiceRepository.findAll(pageReq)
+			.map(purchaseInvoiceMapper::toDto);
+	}
+
+	public PurchaseInvoiceDTO getPurchaseInvoice(Long id){
+		return purchaseInvoiceRepository.findById(id)
+			.map(purchaseInvoiceMapper::toDto)
+			.orElseThrow(() -> new PurchaseInvoiceNotFoundException(id));
 	}
 
 	private void  validatePurchaseInvoiceCreation(PurchaseInvoiceDTO dto){
@@ -113,14 +138,26 @@ public class PurchaseInvoiceService {
 				throw new PurchaseInvoiceBadRequestException("Required unit cost > 0");
 			}
 			BigDecimal unitCost = BigDecimal.valueOf(d.getUnitCost());
-			
+
 			PurchaseInvoiceDetail detail = new PurchaseInvoiceDetail(product, d.getQuantity(), unitCost);
 			invoice.addDetail(detail);
 
+
 			total = total.add(unitCost.multiply(quantity));
 		}
-		
+
 		return total;
+	}
+
+	private void updateProductStock(Long productId, int quantity, double unitCost){
+
+		InventoryUpdate inv = new InventoryUpdate();
+
+		inv.stockDelta(quantity)
+			.unitCost(unitCost);
+
+		//TODO: make URL configurable
+		rest.patchForObject("http://localhost:30000/products/{id}/inventory", inv, ProductDTO.class, productId);     
 	}
 
 }

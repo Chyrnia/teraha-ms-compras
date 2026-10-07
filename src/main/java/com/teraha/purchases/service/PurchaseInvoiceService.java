@@ -29,6 +29,7 @@ import com.teraha.purchases.mapper.PurchaseInvoiceMapper;
 import com.teraha.purchases.exception.SupplierNotFoundException;
 import com.teraha.purchases.exception.ProductNotFoundException;
 import com.teraha.purchases.exception.PurchaseInvoiceBadRequestException;
+import com.teraha.purchases.exception.PurchaseInvoiceNotFoundException;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

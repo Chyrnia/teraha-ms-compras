@@ -9,6 +9,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Page;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.beans.factory.annotation.Value;
 
 import com.teraha.commons.entities.PurchaseInvoice;
 import com.teraha.commons.entities.PurchaseInvoiceDetail;
@@ -40,6 +41,9 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 @RequiredArgsConstructor
 public class PurchaseInvoiceService {
+
+	@Value("${products.service.url}")
+	private String productServiceUrl;
 
 	private final RestTemplate rest;
 
@@ -158,8 +162,12 @@ public class PurchaseInvoiceService {
 		inv.stockDelta(quantity)
 			.unitCost(unitCost);
 
-		//TODO: make URL configurable
-		rest.patchForObject("http://localhost:30000/products/{id}/inventory", inv, ProductDTO.class, productId);     
+		rest.patchForObject(
+				productServiceUrl + "/products/{id}/inventory",
+				inv,
+				ProductDTO.class,
+				productId
+				);     
 	}
 
 }

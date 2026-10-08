@@ -82,17 +82,26 @@ public class PurchaseInvoiceService {
 		return purchaseInvoiceMapper.toDto(saved);
 	}
 
-	public Page<PurchaseInvoiceDTO> listPurchases(int page){
+	public Page<PurchaseInvoiceDTO> listPurchases(int page, String search){
 
-		log.info("Listing purchases, page {}", page);
-		//TODO: search
 		Pageable pageReq = PageRequest.of(page, pageConfigs.getPageSize());
-		return purchaseInvoiceRepository.findAll(pageReq)
-			.map(purchaseInvoiceMapper::toDto);
+
+		Page<PurchaseInvoice> purchases;
+
+		if(search == null || search.isBlank()){
+			log.info("Listing purchases, page {}", page);
+			purchases = purchaseInvoiceRepository.findAll(pageReq); 
+		} else {
+			log.info("Listing purchases\npage {}\nsearch term: {}", page, search);
+			purchases = purchaseInvoiceRepository.searchPurchases(
+					search.trim(),pageReq);
+		}
+
+		return purchases.map(purchaseInvoiceMapper::toDto);
 	}
 
 	public PurchaseInvoiceDTO getPurchaseInvoice(Long id){
-		
+
 		log.info("Fetching invoice with id: {}", id);
 
 		return purchaseInvoiceRepository.findById(id)

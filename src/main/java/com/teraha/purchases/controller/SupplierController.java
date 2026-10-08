@@ -17,9 +17,19 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.data.domain.Page;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+@Tag(
+	name = "Suppliers",
+	description = "Operations for managing suppliers"
+)
 @Slf4j 
 @RestController
 @RequestMapping(path="/suppliers", produces="application/json")
@@ -28,14 +38,52 @@ import lombok.extern.slf4j.Slf4j;
 public class SupplierController {
 	private final SupplierService supplierService;
 
+	@Operation(
+		summary = "List suppliers",
+		description = "Returns a paginated list of suppliers, optionally filtered by name, document or timbrado"
+	)
+	@ApiResponse(
+		responseCode = "200",
+		description = "Suppliers retrieved succesfully"
+	)
 	@GetMapping
-	public Page<SupplierDTO> getSuppliers(@RequestParam(name="page", defaultValue="0") int page, @RequestParam(name="search", required=false) String search){
+	public Page<SupplierDTO> getSuppliers(
+			@Parameter(
+				description = "Zero based page-number",
+				example = "0"
+			)
+			@RequestParam(name="page", defaultValue="0") int page, 
+			@Parameter(
+				description = "Optional search term for supplier name, document or timbrado",
+				example = "ACME"
+			)
+			@RequestParam(name="search", required=false) String search){
 		log.info("Received a GET request at /suppliers");
 		return supplierService.listSuppliers(page, search);
 	}
 
+	@Operation(
+		summary = "Get supplier by ID",
+		description = "Returns a supplier identified by its database ID"
+	)
+	@ApiResponses({
+		@ApiResponse(
+			responseCode = "200",
+			description = "Supplier found"
+		),
+		@ApiResponse(
+			responseCode = "404",
+			description = "Supplier not found"
+		)
+	})
 	@GetMapping("/{id}")
-	public ResponseEntity<SupplierDTO> findSupplierById(@PathVariable("id") Long id){
+	public ResponseEntity<SupplierDTO> findSupplierById(
+			@Parameter(
+				description = "Supplier ID",
+				example = "2",
+				required = true
+			)
+			@PathVariable("id") Long id){
 
 		log.info("Received a GET request at /suppliers/{}", id);
 
@@ -43,18 +91,57 @@ public class SupplierController {
 		return new ResponseEntity<>(supplier, HttpStatus.OK);
 	}
 
+	@Operation(
+		summary = "Create a new supplier",
+		description = "Creates a new supplier"
+	)
+	@ApiResponses({
+		@ApiResponse(
+			responseCode = "201",
+			description = "Supplier created succesfully"
+		),
+		@ApiResponse(
+			responseCode = "400",
+			description = "Invalid supplier data"
+		),
+		@ApiResponse(
+			responseCode = "409",
+			description = "A supplier with the specified document already exists"
+		)
+	})
 	@PostMapping(consumes="application/json")
 	@ResponseStatus(HttpStatus.CREATED)
-	public SupplierDTO postSupplier(@RequestBody SupplierDTO dto){
+	public SupplierDTO postSupplier(
+			@RequestBody SupplierDTO dto){
 
 		log.info("Received a POST request at /suppliers");
 
 		return supplierService.createSupplier(dto);
 	}
 
+	@Operation(
+        summary = "Deactivate supplier",
+        description = "Logically deactivates a supplier. The supplier remains stored for historical purposes."
+    )
+    @ApiResponses({
+        @ApiResponse(
+            responseCode = "204",
+            description = "Supplier deactivated successfully"
+        ),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Supplier not found"
+        )
+    })
 	@DeleteMapping("/{id}")
 	@ResponseStatus(HttpStatus.NO_CONTENT)
-	public void deleteSupplier(@PathVariable("id") Long id){
+	public void deleteSupplier(
+			@Parameter(
+				description = "Supplier ID",
+				example = "1",
+				required = true
+			)
+			@PathVariable("id") Long id){
 
 		log.info("Received DELETE request at /suppliers/{}", id);
 

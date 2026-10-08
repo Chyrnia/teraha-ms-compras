@@ -44,15 +44,24 @@ public class SupplierService {
 		return supplierMapper.toDto(saved);
 	}
 
-	public Page<SupplierDTO> listSuppliers(int page){
-		//TODO: search?
+	public Page<SupplierDTO> listSuppliers(int page, String search){
 		
 		Pageable pageReq = PageRequest.of(page, pageConfigs.getPageSize());
 
-		log.info("Listing suppliers, page: {}", page);
+		Page<Supplier> suppliers;
 
-		return supplierRepository.findAllByActiveTrue(pageReq)
-			.map(supplierMapper::toDto);
+		if(search == null || search.isBlank()){
+			log.info("Listing suppliers, page: {}", page);
+			suppliers = supplierRepository.findAllByActiveTrue(pageReq);
+		} else {
+			log.info("Listing suppliers\npage: {}\nsearch term: {}", page, search);
+			suppliers = supplierRepository.searchActiveSuppliers(
+					search.trim(),
+					pageReq);
+		}
+
+
+		return suppliers.map(supplierMapper::toDto);
 	}
 
 	public SupplierDTO findSupplierById(Long id){
@@ -63,11 +72,21 @@ public class SupplierService {
 			.orElseThrow(() -> new SupplierNotFoundException(id));
 	}
 
+	public void deactivateSupplier(Long id){
+
+		Supplier supplier = supplierRepository.findByIdAndActiveTrue(id)
+			.orElseThrow(() -> new SupplierNotFoundException(id));
+
+		log.info("Deactivating supplier with id {}", id);
+		supplier.setActive(false);
+	}
+
+
 
 	private void  validateSupplierCreationInfo(SupplierDTO dto){
 
 		validateRequiredCreationFields(dto);
-		
+
 		if(supplierRepository.existsByDocument(dto.getDocument())){
 			throw new SupplierConflictException(dto.getDocument());
 		}
@@ -85,6 +104,7 @@ public class SupplierService {
 		  }
 
 	}
+
 
 }
 

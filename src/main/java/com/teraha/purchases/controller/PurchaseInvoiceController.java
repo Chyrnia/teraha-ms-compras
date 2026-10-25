@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.http.HttpStatus;
 import org.springframework.data.domain.Page;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -24,6 +25,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,6 +37,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j 
 @RestController
 @RequestMapping(path="/purchases", produces="application/json")
+@SecurityRequirement(name = "bearerAuth")
 @CrossOrigin
 @RequiredArgsConstructor
 public class PurchaseInvoiceController {
@@ -66,6 +69,7 @@ public class PurchaseInvoiceController {
 				)
 		)
 	})
+	@PreAuthorize("hasAnyRole('SELLER','MANAGER','SYSADMIN')")
 	@PostMapping(consumes="application/json")
 	@ResponseStatus(HttpStatus.CREATED)
 	public PurchaseInvoiceDTO postPurchase(
@@ -90,6 +94,7 @@ public class PurchaseInvoiceController {
 			description = "Purchase invoice retrieved succesfully"
 		)
 	})
+	@PreAuthorize("hasAnyRole('SELLER','MANAGER','SYSADMIN')")
 	@GetMapping
 	public Page<PurchaseInvoiceDTO> listPurchaseInvoices(
 			@Parameter(
@@ -127,6 +132,7 @@ public class PurchaseInvoiceController {
 				)
 		)
 	})
+	@PreAuthorize("hasAnyRole('SELLER','MANAGER','SYSADMIN')")
 	@GetMapping("/{id}")
 	public PurchaseInvoiceDTO getPurchaseInvoice(
 		@Parameter(

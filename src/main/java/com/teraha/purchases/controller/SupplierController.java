@@ -16,12 +16,14 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.data.domain.Page;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +35,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j 
 @RestController
 @RequestMapping(path="/suppliers", produces="application/json")
+@SecurityRequirement(name = "bearerAuth")
 @CrossOrigin
 @RequiredArgsConstructor
 public class SupplierController {
@@ -46,6 +49,7 @@ public class SupplierController {
 		responseCode = "200",
 		description = "Suppliers retrieved succesfully"
 	)
+	@PreAuthorize("hasAnyRole('SELLER','MANAGER','SYSADMIN')")
 	@GetMapping
 	public Page<SupplierDTO> getSuppliers(
 			@Parameter(
@@ -76,6 +80,7 @@ public class SupplierController {
 			description = "Supplier not found"
 		)
 	})
+	@PreAuthorize("hasAnyRole('SELLER','MANAGER','SYSADMIN')")
 	@GetMapping("/{id}")
 	public ResponseEntity<SupplierDTO> findSupplierById(
 			@Parameter(
@@ -109,6 +114,7 @@ public class SupplierController {
 			description = "A supplier with the specified document already exists"
 		)
 	})
+	@PreAuthorize("hasAnyRole('MANAGER','SYSADMIN')")
 	@PostMapping(consumes="application/json")
 	@ResponseStatus(HttpStatus.CREATED)
 	public SupplierDTO postSupplier(
@@ -133,6 +139,7 @@ public class SupplierController {
             description = "Supplier not found"
         )
     })
+	@PreAuthorize("hasAnyRole('MANAGER','SYSADMIN')")
 	@DeleteMapping("/{id}")
 	@ResponseStatus(HttpStatus.NO_CONTENT)
 	public void deleteSupplier(

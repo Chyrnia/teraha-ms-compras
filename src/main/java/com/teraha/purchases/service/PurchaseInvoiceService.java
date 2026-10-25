@@ -10,6 +10,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CachePut;
 
 import com.teraha.commons.entities.PurchaseInvoice;
 import com.teraha.commons.entities.PurchaseInvoiceDetail;
@@ -54,6 +56,7 @@ public class PurchaseInvoiceService {
 	private final PurchaseInvoiceMapper purchaseInvoiceMapper;
 	private final PagingConfigs pageConfigs;
 
+	@CachePut(cacheNames="purchases:invoices", key="#result.id")
 	public PurchaseInvoiceDTO createPurchaseInvoice(PurchaseInvoiceDTO dto){
 
 		validatePurchaseInvoiceCreation(dto);
@@ -100,6 +103,7 @@ public class PurchaseInvoiceService {
 		return purchases.map(purchaseInvoiceMapper::toDto);
 	}
 
+	@Cacheable(cacheNames="purchases:invoices", key="#id")
 	public PurchaseInvoiceDTO getPurchaseInvoice(Long id){
 
 		log.info("Fetching invoice with id: {}", id);

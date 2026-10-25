@@ -5,6 +5,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Page;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.CacheEvict;
 
 import com.teraha.commons.entities.Supplier;
 import com.teraha.commons.dtos.SupplierDTO;
@@ -31,6 +34,7 @@ public class SupplierService {
 	private final SupplierMapper supplierMapper;
 	private final PagingConfigs pageConfigs;
 
+	@CachePut(cacheNames="purchases:suppliers", key="#result.id")
 	public SupplierDTO createSupplier(SupplierDTO dto){
 
 		validateSupplierCreationInfo(dto);
@@ -64,6 +68,7 @@ public class SupplierService {
 		return suppliers.map(supplierMapper::toDto);
 	}
 
+	@Cacheable(cacheNames="purchases:suppliers", key="#id")
 	public SupplierDTO findSupplierById(Long id){
 
 		log.info("Fetching supplier with id: {}", id);
@@ -72,6 +77,7 @@ public class SupplierService {
 			.orElseThrow(() -> new SupplierNotFoundException(id));
 	}
 
+	@CacheEvict(cacheNames="purchases:suppliers", key="#id")
 	public void deactivateSupplier(Long id){
 
 		Supplier supplier = supplierRepository.findByIdAndActiveTrue(id)

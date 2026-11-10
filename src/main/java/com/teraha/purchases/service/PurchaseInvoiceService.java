@@ -1,194 +1,267 @@
 package com.teraha.purchases.service;
 
-import java.util.List;
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
-import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Page;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.cache.annotation.CachePut;
 
-import com.teraha.commons.entities.PurchaseInvoice;
-import com.teraha.commons.entities.PurchaseInvoiceDetail;
-import com.teraha.commons.entities.Product;
-import com.teraha.commons.entities.Supplier;
-
+import com.teraha.commons.dtos.InventoryUpdate;
+import com.teraha.commons.dtos.InventoryUpdateLine;
 import com.teraha.commons.dtos.PurchaseInvoiceDTO;
 import com.teraha.commons.dtos.PurchaseInvoiceDetailDTO;
-import com.teraha.commons.dtos.InventoryUpdate;
-import com.teraha.commons.dtos.ProductDTO;
+import com.teraha.commons.entities.Product;
+import com.teraha.commons.entities.PurchaseInvoice;
+import com.teraha.commons.entities.PurchaseInvoiceDetail;
+import com.teraha.commons.entities.Supplier;
 
-import com.teraha.purchases.repository.ProductRepository;
-import com.teraha.purchases.repository.SupplierRepository;
-import com.teraha.purchases.repository.PurchaseInvoiceRepository;
-
-import com.teraha.purchases.mapper.PurchaseInvoiceMapper;
 import com.teraha.purchases.configs.PagingConfigs;
-
-import com.teraha.purchases.exception.SupplierNotFoundException;
 import com.teraha.purchases.exception.ProductNotFoundException;
 import com.teraha.purchases.exception.PurchaseInvoiceBadRequestException;
 import com.teraha.purchases.exception.PurchaseInvoiceNotFoundException;
+import com.teraha.purchases.exception.SupplierNotFoundException;
+import com.teraha.purchases.mapper.PurchaseInvoiceMapper;
+import com.teraha.purchases.repository.ProductRepository;
+import com.teraha.purchases.repository.PurchaseInvoiceRepository;
+import com.teraha.purchases.repository.SupplierRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-@Transactional
 @Service
+@Transactional
 @RequiredArgsConstructor
 public class PurchaseInvoiceService {
 
-	@Value("${products.service.url}")
-	private String productServiceUrl;
+    @Value("${products.service.url}")
+    private String productServiceUrl;
 
-	private final RestTemplate rest;
+    private final RestTemplate rest;
 
-	private final SupplierRepository supplierRepository;
-	private final ProductRepository productRepository;
-	private final PurchaseInvoiceRepository purchaseInvoiceRepository;
+    private final SupplierRepository supplierRepository;
+    private final ProductRepository productRepository;
+    private final PurchaseInvoiceRepository purchaseInvoiceRepository;
 
-	private final PurchaseInvoiceMapper purchaseInvoiceMapper;
-	private final PagingConfigs pageConfigs;
+    private final PurchaseInvoiceMapper purchaseInvoiceMapper;
+    private final PagingConfigs pageConfigs;
 
-	@CachePut(cacheNames="purchases:invoices", key="#result.id")
-	public PurchaseInvoiceDTO createPurchaseInvoice(PurchaseInvoiceDTO dto){
+    @CachePut(cacheNames = "purchases:invoices", key = "#result.id")
+    public PurchaseInvoiceDTO createPurchaseInvoice(PurchaseInvoiceDTO dto) {
 
-		validatePurchaseInvoiceCreation(dto);
+        validatePurchaseInvoiceCreation(dto);
 
-		//retrieve and validate supplier 
-		Supplier supplier = supplierRepository
-			.findByIdAndActiveTrue(dto.getSupplierId())
-			.orElseThrow(() -> new SupplierNotFoundException(dto.getSupplierId()));
+        Supplier supplier = supplierRepository
+                .findByIdAndActiveTrue(dto.getSupplierId())
+                .orElseThrow(() -> new SupplierNotFoundException(dto.getSupplierId()));
 
-		PurchaseInvoice invoice = new PurchaseInvoice(dto.getInvoiceNumber(), dto.getTransactionDate(), supplier);
+        PurchaseInvoice invoice = new PurchaseInvoice(
+                dto.getInvoiceNumber(),
+                dto.getTransactionDate(),
+                supplier
+        );
 
-		//fill details and compute total
-		BigDecimal total = fillInvoiceWithDetails(invoice, dto.getDetails());
-		invoice.setTotal(total);
+        BigDecimal total = fillInvoiceWithDetails(invoice, dto.getDetails());
+        invoice.setTotal(total);
 
-		log.info("Creating purchase invoice with number {}", invoice.getInvoiceNumber());
+        log.info("Creating purchase invoice with number {}", invoice.getInvoiceNumber());
 
-		PurchaseInvoice saved = purchaseInvoiceRepository.save(invoice);
+        // Persist the invoice first.
+        PurchaseInvoice saved = purchaseInvoiceRepository.save(invoice);
 
-		//call products and tell him that we got more stock!
-		log.warn("Updating product inventory with Products service!");
-		for(PurchaseInvoiceDetailDTO d : dto.getDetails()){
-			updateProductStock(d.getProductId(), d.getQuantity(), d.getUnitCost());
-		}
+        // Increase inventory 
+        updateProductStocks(saved.getDetails(), 1);
 
-		return purchaseInvoiceMapper.toDto(saved);
-	}
+        return purchaseInvoiceMapper.toDto(saved);
+    }
 
-	public Page<PurchaseInvoiceDTO> listPurchases(int page, String search){
+    @CacheEvict(cacheNames = "purchases:invoices", key = "#id")
+    public void deactivatePurchaseInvoice(Long id) {
 
-		Pageable pageReq = PageRequest.of(page, pageConfigs.getPageSize());
+        PurchaseInvoice invoice = purchaseInvoiceRepository
+                .findByIdForUpdate(id)
+                .orElseThrow(() -> new PurchaseInvoiceNotFoundException(id));
 
-		Page<PurchaseInvoice> purchases;
+        if (invoice.isCancelled()) {
+            throw new PurchaseInvoiceBadRequestException(
+                    "Purchase invoice is already cancelled"
+            );
+        }
 
-		if(search == null || search.isBlank()){
-			log.info("Listing purchases, page {}", page);
-			purchases = purchaseInvoiceRepository.findAll(pageReq); 
-		} else {
-			log.info("Listing purchases\npage {}\nsearch term: {}", page, search);
-			purchases = purchaseInvoiceRepository.searchPurchases(
-					search.trim(),pageReq);
-		}
+        log.info("Cancelling purchase invoice {}", id);
 
-		return purchases.map(purchaseInvoiceMapper::toDto);
-	}
+        // Reverse the inventory increase caused by this purchase.
+        reverseProductStocks(invoice.getDetails());
 
-	@Cacheable(cacheNames="purchases:invoices", key="#id")
-	public PurchaseInvoiceDTO getPurchaseInvoice(Long id){
+        // Only mark it cancelled if Products accepted the reversal.
+        invoice.setCancelled(true);
+    }
 
-		log.info("Fetching invoice with id: {}", id);
+    @Transactional(readOnly = true)
+    public Page<PurchaseInvoiceDTO> listPurchases(int page, String search) {
 
-		return purchaseInvoiceRepository.findById(id)
-			.map(purchaseInvoiceMapper::toDto)
-			.orElseThrow(() -> new PurchaseInvoiceNotFoundException(id));
-	}
+        Pageable pageReq = PageRequest.of(page, pageConfigs.getPageSize());
 
-	private void  validatePurchaseInvoiceCreation(PurchaseInvoiceDTO dto){
+        Page<PurchaseInvoice> purchases;
 
-		if(dto.getInvoiceNumber() == null || dto.getInvoiceNumber().isBlank()){
-			log.error("No invoice number provided");
-			throw new PurchaseInvoiceBadRequestException("Invoice Number invalid");
-		}
+        if (search == null || search.isBlank()) {
+            log.info("Listing purchases, page {}", page);
+            purchases = purchaseInvoiceRepository.findAll(pageReq);
+        } else {
+            log.info("Listing purchases, page {}, search term: {}", page, search);
+            purchases = purchaseInvoiceRepository.searchPurchases(
+                    search.trim(),
+                    pageReq
+            );
+        }
 
-		if(dto.getTransactionDate() == null){
-			log.error("No invoice date provided");
-			throw new PurchaseInvoiceBadRequestException("Date invalid");
-		}
+        return purchases.map(purchaseInvoiceMapper::toDto);
+    }
 
-		if(dto.getSupplierId() == null){
-			log.error("No supplier provided");
-			throw new PurchaseInvoiceBadRequestException("Supplier invalid");
-		}
+    @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "purchases:invoices", key = "#id")
+    public PurchaseInvoiceDTO getPurchaseInvoice(Long id) {
 
-		if(dto.getDetails() == null || dto.getDetails().isEmpty()){
-			log.error("No details provided");
-			throw new PurchaseInvoiceBadRequestException("Empty details");
-		}
+        log.info("Fetching invoice with id: {}", id);
 
-	}
+        return purchaseInvoiceRepository.findById(id)
+                .map(purchaseInvoiceMapper::toDto)
+                .orElseThrow(() -> new PurchaseInvoiceNotFoundException(id));
+    }
 
-	private BigDecimal fillInvoiceWithDetails(PurchaseInvoice invoice, List<PurchaseInvoiceDetailDTO> details){
+    private void validatePurchaseInvoiceCreation(PurchaseInvoiceDTO dto) {
 
-		BigDecimal total = BigDecimal.ZERO;
+        if (dto.getInvoiceNumber() == null || dto.getInvoiceNumber().isBlank()) {
+            throw new PurchaseInvoiceBadRequestException("Invoice number invalid");
+        }
 
-		for(PurchaseInvoiceDetailDTO d : details){
+        if (dto.getTransactionDate() == null) {
+            throw new PurchaseInvoiceBadRequestException("Date invalid");
+        }
 
-			//validate productId
-			if(d.getProductId() == null){
-				throw new PurchaseInvoiceBadRequestException("Required productId");
-			}
+        if (dto.getSupplierId() == null) {
+            throw new PurchaseInvoiceBadRequestException("Supplier invalid");
+        }
 
-			//retrieve and validate product
-			Product product = productRepository
-				.findByIdAndActiveTrue(d.getProductId())
-				.orElseThrow(() -> new ProductNotFoundException(d.getProductId()));
+        if (dto.getDetails() == null || dto.getDetails().isEmpty()) {
+            throw new PurchaseInvoiceBadRequestException("Empty details");
+        }
+    }
 
-			//validate quantity
-			if(d.getQuantity() == null || d.getQuantity() <= 0){
-				throw new PurchaseInvoiceBadRequestException("Required quantity > 0");
-			}
-			BigDecimal quantity = BigDecimal.valueOf(d.getQuantity());
+    private BigDecimal fillInvoiceWithDetails(
+            PurchaseInvoice invoice,
+            List<PurchaseInvoiceDetailDTO> details
+    ) {
 
-			//validate unit cost
-			if(d.getUnitCost() == null || d.getUnitCost() <= 0){
-				throw new PurchaseInvoiceBadRequestException("Required unit cost > 0");
-			}
-			BigDecimal unitCost = BigDecimal.valueOf(d.getUnitCost());
+        BigDecimal total = BigDecimal.ZERO;
 
-			PurchaseInvoiceDetail detail = new PurchaseInvoiceDetail(product, d.getQuantity(), unitCost);
-			invoice.addDetail(detail);
+        for (PurchaseInvoiceDetailDTO d : details) {
 
+            if (d.getProductId() == null) {
+                throw new PurchaseInvoiceBadRequestException("Required productId");
+            }
 
-			total = total.add(unitCost.multiply(quantity));
-		}
+            Product product = productRepository
+                    .findByIdAndActiveTrue(d.getProductId())
+                    .orElseThrow(() -> new ProductNotFoundException(d.getProductId()));
 
-		return total;
-	}
+            if (d.getQuantity() == null || d.getQuantity() <= 0) {
+                throw new PurchaseInvoiceBadRequestException("Required quantity > 0");
+            }
 
-	private void updateProductStock(Long productId, int quantity, double unitCost){
+            if (d.getUnitCost() == null || d.getUnitCost() <= 0) {
+                throw new PurchaseInvoiceBadRequestException("Required unit cost > 0");
+            }
 
-		InventoryUpdate inv = new InventoryUpdate();
+            BigDecimal quantity = BigDecimal.valueOf(d.getQuantity());
+            BigDecimal unitCost = BigDecimal.valueOf(d.getUnitCost());
 
-		inv.stockDelta(quantity)
-			.unitCost(unitCost);
+            PurchaseInvoiceDetail detail = new PurchaseInvoiceDetail(
+                    product,
+                    d.getQuantity(),
+                    unitCost
+            );
 
-		rest.patchForObject(
-				productServiceUrl + "/products/{id}/inventory",
-				inv,
-				ProductDTO.class,
-				productId
-				);     
-	}
+            invoice.addDetail(detail);
 
+            total = total.add(unitCost.multiply(quantity));
+        }
+
+        return total;
+    }
+
+    private void updateProductStocks(
+            List<PurchaseInvoiceDetail> details,
+            int multiplier
+    ) {
+
+        List<InventoryUpdateLine> lines = new ArrayList<>();
+
+        for (PurchaseInvoiceDetail d : details) {
+
+            InventoryUpdateLine line = new InventoryUpdateLine();
+
+            line.setProductId(d.getProduct().getId());
+            line.setStockDelta(d.getQuantity() * multiplier);
+            line.setUnitCost(d.getUnitCost().doubleValue());
+
+            lines.add(line);
+        }
+
+        InventoryUpdate update = new InventoryUpdate();
+        update.setDetails(lines);
+
+        rest.postForObject(
+                productServiceUrl + "/products/inventory",
+                update,
+                Void.class
+        );
+
+        log.info(
+                "Applied inventory batch with {} movements (multiplier: {})",
+                lines.size(),
+                multiplier
+        );
+    }
+
+	private void reverseProductStocks(List<PurchaseInvoiceDetail> details) {
+
+    List<InventoryUpdateLine> lines = new ArrayList<>();
+
+    for (PurchaseInvoiceDetail d : details) {
+
+        InventoryUpdateLine line = new InventoryUpdateLine();
+
+        line.setProductId(d.getProduct().getId());
+        line.setStockDelta(-d.getQuantity());
+
+        // Deliberately omit unitCost: this is a reversal,
+        // not a new purchase.
+
+        lines.add(line);
+    }
+
+    InventoryUpdate update = new InventoryUpdate();
+    update.setDetails(lines);
+
+    rest.postForObject(
+            productServiceUrl + "/products/inventory",
+            update,
+            Void.class
+    );
+
+    log.info(
+            "Reversed inventory batch with {} movements",
+            lines.size()
+    );
 }
-
+}

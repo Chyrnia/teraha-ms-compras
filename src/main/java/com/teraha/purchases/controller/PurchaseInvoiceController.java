@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.http.HttpStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -145,4 +146,41 @@ public class PurchaseInvoiceController {
 	 	return purchaseService.getPurchaseInvoice(id);
 	}
 
+	@Operation(
+    summary = "Cancel a purchase invoice",
+    description = "Cancels a purchase invoice and reverses the inventory movements associated with it. The invoice is preserved in the database."
+	)
+	@ApiResponses({
+		@ApiResponse(
+			responseCode = "204",
+			description = "Purchase invoice cancelled successfully"
+		),
+		@ApiResponse(
+			responseCode = "400",
+			description = "Purchase invoice is already cancelled or inventory reversal cannot be performed",
+			content = @Content(
+				mediaType = "application/json",
+				schema = @Schema(implementation = ErrorResponse.class)
+			)
+		),
+		@ApiResponse(
+		responseCode = "404",
+		description = "Purchase invoice not found",
+		content = @Content(
+			mediaType = "application/json",
+			schema = @Schema(implementation = ErrorResponse.class)
+			)
+		)
+	})
+	@PreAuthorize("hasAnyRole('MANAGER', 'SYSADMIN')")
+	@DeleteMapping("/{id}")
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	public void cancelPurchaseInvoice( 
+			@Parameter( description = "ID of the purchase invoice to cancel", example = "3", required = true)
+			@PathVariable("id") Long id
+			) 
+	{
+				log.info("Received DELETE at /purchases/{}", id);
+				purchaseService.deactivatePurchaseInvoice(id);
+	}
 }

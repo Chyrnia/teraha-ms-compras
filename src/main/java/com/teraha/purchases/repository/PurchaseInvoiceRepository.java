@@ -1,9 +1,14 @@
 package com.teraha.purchases.repository;
 
+import java.util.Optional;
+
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.jpa.repository.Lock;
+
+import jakarta.persistence.LockModeType;
 
 import com.teraha.commons.entities.PurchaseInvoice;
 
@@ -40,4 +45,9 @@ public interface PurchaseInvoiceRepository extends InvoiceRepository<PurchaseInv
 		@Param("query") String query,
 		Pageable pageable
 	);
+
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("SELECT pi FROM PurchaseInvoice pi WHERE pi.id = :id")
+	Optional<PurchaseInvoice> findByIdForUpdate(@Param("id")Long id);
+
 }

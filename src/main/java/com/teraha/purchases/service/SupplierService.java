@@ -48,6 +48,24 @@ public class SupplierService {
 		return supplierMapper.toDto(saved);
 	}
 
+	@CachePut(cacheNames = "purchases:suppliers", key = "#result.id")
+	public SupplierDTO updateSupplier(Long id, SupplierDTO dto) {
+
+		validateSupplierUpdateInfo(dto);
+
+		Supplier supplier = supplierRepository
+			.findByIdAndActiveTrue(id)
+			.orElseThrow(() -> new SupplierNotFoundException(id));
+
+		log.info("Updating supplier with id {}", id);
+
+		supplierMapper.updateEntity(dto, supplier);
+
+		Supplier updated = supplierRepository.save(supplier);
+
+		return supplierMapper.toDto(updated);
+	}
+
 	public Page<SupplierDTO> listSuppliers(int page, String search){
 		
 		Pageable pageReq = PageRequest.of(page, pageConfigs.getPageSize());
@@ -110,6 +128,33 @@ public class SupplierService {
 		  }
 
 	}
+
+	private void validateSupplierUpdateInfo(SupplierDTO dto) {
+
+    if (dto == null) {
+        throw new SupplierBadRequestException("Supplier data is required");
+    }
+
+    if (
+            dto.getName() == null &&
+            dto.getAddress() == null &&
+            dto.getEmail() == null &&
+            dto.getPhone() == null &&
+            dto.getTimbrado() == null
+    ) {
+        throw new SupplierBadRequestException(
+                "At least one supplier attribute must be provided"
+        );
+    }
+
+    if (dto.getName() != null && dto.getName().isBlank()) {
+        throw new SupplierBadRequestException("Supplier name cannot be blank");
+    }
+
+    if (dto.getTimbrado() != null && dto.getTimbrado().isBlank()) {
+        throw new SupplierBadRequestException("Timbrado cannot be blank");
+    }
+}
 
 
 }

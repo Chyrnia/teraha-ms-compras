@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -152,4 +153,30 @@ public class SupplierController {
 
 		supplierService.deactivateSupplier(id);
 	}
+
+	@Operation(
+	summary = "Update supplier",
+	description = "Partially updates an existing supplier. Document cannot be modified."
+	)
+		@ApiResponses({
+		@ApiResponse(responseCode = "200", description = "Supplier updated successfully"),
+		@ApiResponse(responseCode = "400", description = "Invalid supplier data"),
+		@ApiResponse(responseCode = "404", description = "Supplier not found")
+		})
+	@PreAuthorize("hasAnyRole('MANAGER', 'SYSADMIN')")
+	@PatchMapping(value = "/{id}", consumes = "application/json")
+	public SupplierDTO updateSupplier(
+			@Parameter(
+			description = "Supplier ID",
+			example = "1",
+			required = true
+			)
+			@PathVariable("id") Long id,
+			@RequestBody SupplierDTO dto
+			) {
+
+		log.info("Received PATCH request at /suppliers/{}", id);
+
+		return supplierService.updateSupplier(id, dto);
+			}
 }
